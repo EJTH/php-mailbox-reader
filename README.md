@@ -10,13 +10,13 @@ Usage
 
 Here is a simple example of usage. This will effectively show the newest unread mail complete with markup and embedded images:
 
-```
+```php
 <?php
 //Include mailboxreader class
 include 'mailboxreader.class.php';
 
 //Create a new instance of mailboxreader, login to the IMAP/POP3 server
-$mb = new MailboxReader('{imap.example.com:143/novalidate-cert}INBOX', 'example@example.com', 'examplepwd');
+$mailbox = new MailboxReader('{imap.example.com:143/novalidate-cert}INBOX', 'example@example.com', 'examplepwd');
 
 //Return a list of UNSEEN message IDs
 $newMails = $mailbox->search('UNSEEN');
