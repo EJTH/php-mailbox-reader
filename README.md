@@ -23,7 +23,7 @@ $newMails = $mailbox->search('UNSEEN');
 $unseenCount = count($newMails);
 if($unseenCount > 0){
     //Fetch mail, second parameter determines if attachments should be downloaded at this point.
-    $message = $mb->fetchMail($newMails[$unseenCount-1], true);
+    $message = $mailbox->fetchMail($newMails[$unseenCount-1], true);
     
     //Echo out the HTML contents of the message.
     echo '<h1>'.$message->subject.'</h1>';
