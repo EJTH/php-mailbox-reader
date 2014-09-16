@@ -56,7 +56,7 @@ class MBMessage {
     public function __construct($mbreader){
         $this->mailboxReader = $mbreader;
     }
-    
+   
     public function saveAttachment($partId,$filename=false,$path=MBREADER_ATTACHMENT_DIR){
         
         if(!isset($this->parts[$partId])) throw new Exception ('Invalid partId.');
@@ -125,6 +125,8 @@ class MailboxReader {
      */
     private $mail;
     private $options;
+    private $sanitizerCallback;
+    
     public function __construct($mailbox, $username, $password, $options=array()){
         $this->mail = imap_open($mailbox, $username, $password);
         if(!$this->mail){
@@ -133,6 +135,15 @@ class MailboxReader {
             throw new Exception($message, 0);
         }
         $this->options = array_merge($this->getDefaultOptions(),$options);
+    }
+    
+    /**
+     * Adds an optional callback handler for sanitizing HTML output.
+     * Using something like HTMLawed or similar is strongly recommended.
+     * @param callable $callbackFunc
+     */
+    public function addSanitizerCallback($callbackFunc){
+      $this->sanitizerCallback = $callbackFunc;
     }
     
     /**
@@ -327,6 +338,12 @@ class MailboxReader {
                     }
                 }
 
+                //Run sanitizer, if set.
+                if($this->sanitizerCallback !== null && is_callable($this->sanitizerCallback)){
+                  $cb = $this->sanitizerCallback;
+                  $content = $cb($content);
+                }
+                
                 /**
                  * Convert plain into HTML and vice versa. So both are always availible, 
                  */
