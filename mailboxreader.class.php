@@ -13,20 +13,33 @@ class MBMessage {
      */
     private $mailboxReader;
     
+    /**
+     * The message ID
+     * @var string 
+     */
     public $msgId;
+    
     /**
      * Subject of the message
      * @var string
      */
     public $subject;
     
-    //Plain text and HTML versions of the message body.
+    /**
+     * Plain text message body
+     * @var string
+     */
     public $plain;
+    
+    /**
+     * HTML message body
+     * @var string
+     */
     public $html;
     
     /**
      * Other parts such as attachments and images embedded in the HTML version of the mail 
-     * format is part-id => part_data
+     * format is part_id => part_data
      * eg.:
      * array('1.2' => stdObj)
      * @var array
@@ -50,13 +63,21 @@ class MBMessage {
     public $header;
     
     /**
-     *
+     * Constructs a new MBMessage.
      * @param MailboxReader $mbreader 
      */
     public function __construct($mbreader){
         $this->mailboxReader = $mbreader;
     }
    
+    /**
+     * Save an attachment specified by partId
+     * @param string $partId
+     * @param string $filename
+     * @param string $path
+     * @return string returns the filename of the downloaded attachment.
+     * @throws MailboxReaderException
+     */
     public function saveAttachment($partId,$filename=false,$path=MBREADER_ATTACHMENT_DIR){
         
         if(!isset($this->parts[$partId])) throw new MailboxReaderException ('Invalid partId.');
@@ -104,11 +125,12 @@ class MBMessage {
     /**
      * Mark a message for deletion from current mailbox
      * see http://php.net/manual/en/function.imap-delete.php
-     * @param type $options 
+     * @param int $options 
      */
     public function delete($options = 0){
         $this->mailboxReader->delete($this->msgid,$options);
     }
+    
     /**
      * Mark message as seen;
      */
@@ -224,7 +246,7 @@ class MailboxReader {
         $parts = array();
         if($part->type == 1){
             $i = 1;
-            if($prefix===false  ) $i = 1;
+            if($prefix === false) $i = 1;
             foreach($part->parts as $p){
                 /* Continue on excluded type, Excluding a type is useful for filtering out attached messages etc. */
                 if(in_array($p->type,$excludeTypes)) continue;
@@ -269,7 +291,7 @@ class MailboxReader {
     
     /**
      * fetches the mail $msgid returns a MBMessage object with the message.
-     * @param int $msgid
+     * @param string $msgid
      * @param boolean $getAttachments
      * @return MBMessage 
      */
@@ -429,7 +451,9 @@ class MailboxReader {
     /**
      * Closes the IMAP stream
      * see http://php.net/manual/en/function.imap-close.php
-     * @param int $flag
+     * @param int $flag If set to CL_EXPUNGE, the function will silently expunge 
+     *            the mailbox before closing, removing all messages marked for deletion. 
+     *            You can achieve the same thing by using imap_expunge()
      * @return boolean 
      */
     public function close($flag = null){
@@ -446,7 +470,7 @@ class MailboxReader {
     /**
      * Mark a message for deletion from current mailbox
      * see http://php.net/manual/en/function.imap-delete.php
-     * @param int $msgid
+     * @param string $msgid
      * @param int $options 
      */
     public function delete($msgid,$options=0){
@@ -457,7 +481,7 @@ class MailboxReader {
      * Sets flags on messages
      * Default is \\SEEN.
      * See http://php.net/manual/en/function.imap-setflag-full.php
-     * @param int $msgId
+     * @param string $msgId
      * @param string $flag See PHP manual 
      */
     public function setFlag($msgId,$flag="\\SEEN"){
@@ -465,7 +489,5 @@ class MailboxReader {
     }
 }
 
-class MailboxReaderException extends Exception {
-  
-}
+class MailboxReaderException extends Exception { }
 ?>
