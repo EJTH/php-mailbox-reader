@@ -59,7 +59,7 @@ class MBMessage {
    
     public function saveAttachment($partId,$filename=false,$path=MBREADER_ATTACHMENT_DIR){
         
-        if(!isset($this->parts[$partId])) throw new Exception ('Invalid partId.');
+        if(!isset($this->parts[$partId])) throw new MailboxReaderException ('Invalid partId.');
         $part = $this->parts[$partId];
         
         if($part->ifparameters)
@@ -127,12 +127,20 @@ class MailboxReader {
     private $options;
     private $sanitizerCallback;
     
+    /**
+     * 
+     * @param string $mailbox
+     * @param string $username
+     * @param string $password
+     * @param array $options
+     * @throws MailboxReaderException
+     */
     public function __construct($mailbox, $username, $password, $options=array()){
         $this->mail = imap_open($mailbox, $username, $password);
         if(!$this->mail){
             /* Something went wrong, throw an exception with debug info */
             $message = 'IMAP ERROR: '.print_r(imap_errors(),true);
-            throw new Exception($message, 0);
+            throw new MailboxReaderException($message, 0);
         }
         $this->options = array_merge($this->getDefaultOptions(),$options);
     }
@@ -148,7 +156,7 @@ class MailboxReader {
     
     /**
      * Defines the default options
-     * @return type 
+     * @return array 
      */
     private function getDefaultOptions(){
         return array(
@@ -185,8 +193,8 @@ class MailboxReader {
     /**
      * See PHP documentation for imap_search
      * http://php.net/manual/en/function.imap-search.php
-     * @param type $s
-     * @return type 
+     * @param string $criteria
+     * @return boolean Return FALSE if it does not understand the search criteria or no messages have been found. 
      */
     public function search($criteria){
         return imap_search($this->mail, $criteria);
@@ -242,8 +250,8 @@ class MailboxReader {
     
     /**
      * converts HTML messages to a prettier clear text alternative.
-     * @param type $document
-     * @return type 
+     * @param string $document
+     * @return string 
      */
     static private function html2txt($document){
         $search = array(
@@ -261,8 +269,8 @@ class MailboxReader {
     
     /**
      * fetches the mail $msgid returns a MBMessage object with the message.
-     * @param type $msgid
-     * @param type $getAttachments
+     * @param int $msgid
+     * @param boolean $getAttachments
      * @return MBMessage 
      */
     public function fetchMail($msgid,$getAttachments=false){
@@ -295,7 +303,16 @@ class MailboxReader {
         $message->msgId = $msgid;
         $message->header = $header;
         
-        $message->subject = imap_utf8($header->subject);
+        $subject = imap_utf8($header->subject);
+        
+        //Run sanitizer, if set.
+        if($this->sanitizerCallback !== null && is_callable($this->sanitizerCallback)){
+          $cb = $this->sanitizerCallback;
+          $subject = $cb($subject);
+        }
+        
+        $message->subject = $subject;
+
         
         foreach($parts as $pid => $part){
             $it = $mime[$part->type];
@@ -306,7 +323,7 @@ class MailboxReader {
             /* If part is mail body or alternative... */
             if(!$part->ifdisposition && ($is == 'plain' || $is == 'html')){
                 $content = imap_fetchbody($this->mail,$msgid,$pid);
-                if(!$content) throw new Exception (print_r(imap_last_error (),true));
+                if(!$content) throw new MailboxReaderException (print_r(imap_last_error (),true));
                 
                 //Assume default charset is used in message encoding. Used as a fallback
                 $encoding = $this->options['charset'];
@@ -412,8 +429,8 @@ class MailboxReader {
     /**
      * Closes the IMAP stream
      * see http://php.net/manual/en/function.imap-close.php
-     * @param type $flag
-     * @return type 
+     * @param int $flag
+     * @return boolean 
      */
     public function close($flag = null){
         return imap_close($this->mail,$flag);
@@ -429,8 +446,8 @@ class MailboxReader {
     /**
      * Mark a message for deletion from current mailbox
      * see http://php.net/manual/en/function.imap-delete.php
-     * @param type $msgid
-     * @param type $options 
+     * @param int $msgid
+     * @param int $options 
      */
     public function delete($msgid,$options=0){
         imap_delete($this->mail,trim($msgid),$options);
@@ -440,11 +457,15 @@ class MailboxReader {
      * Sets flags on messages
      * Default is \\SEEN.
      * See http://php.net/manual/en/function.imap-setflag-full.php
-     * @param type $msgId
-     * @param type $flag 
+     * @param int $msgId
+     * @param string $flag See PHP manual 
      */
     public function setFlag($msgId,$flag="\\SEEN"){
         imap_setflag_full($this->mail, (string) $msgId, $flag);
     }
+}
+
+class MailboxReaderException extends Exception {
+  
 }
 ?>
